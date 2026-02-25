@@ -32,5 +32,5 @@ npm run dev
 Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds the app and deploys it to GitHub Pages at:
 
 ```
-https://jwillett.github.io/ai-sandbox/
+https://jwillett.github.io/grand-bazaar-recipe-searcher/
 ```
