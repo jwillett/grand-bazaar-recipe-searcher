@@ -196,7 +196,7 @@ export default function App() {
                       const isSelected = selected.some(s => ingMatch(ing, s));
                       const isTyped = text && ingMatch(ing, text);
                       return (
-                        <span key={idx} onClick={() => addIngredient(ing)} title={ing} style={{ fontSize: "0.76rem", fontWeight: 700, padding: "3px 8px", borderRadius: 7, cursor: "pointer", background: isSelected ? "#c8f7c5" : isTyped ? "#ffe082" : "#f0ede4", border: isSelected ? "1.5px solid #5cb85c" : isTyped ? "1.5px solid #f5c842" : "1.5px solid transparent", color: "#3a2e1f", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span key={idx} onClick={() => addIngredient(ing)} title={ing} style={{ fontSize: "0.76rem", fontWeight: 700, padding: "3px 8px", borderRadius: 7, cursor: "pointer", background: isSelected ? "#c8f7c5" : isTyped ? "#ffe082" : "#f0ede4", border: isSelected ? "1.5px solid #5cb85c" : isTyped ? "1.5px solid #f5c842" : "1.5px solid transparent", color: "#3a2e1f" }}>
                           {ing}
                         </span>
                       );
