@@ -1,4 +1,4 @@
-# Grand Bazaar Recipe Finder
+# Grand Bazaar Recipe Searcher
 
 A recipe search tool for *Story of Seasons: Grand Bazaar*. Browse all 266 in-game recipes, filter by category and effect, and search by ingredient name.
 
