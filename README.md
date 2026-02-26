@@ -12,12 +12,12 @@ A recipe search tool for *Story of Seasons: Grand Bazaar*. Browse all 266 in-gam
 
 ## Data source
 
-Recipe data is sourced from:
+All recipe data — names, ingredients, prices, effects, and images — comes from the community spreadsheet:
 
-- [StratsWiki](https://stratswiki.com/sos-gb/items/recipes/) for the core 266-recipe set
-- The community spreadsheet used in this project for ingredient-slot wording and option lists: <https://docs.google.com/spreadsheets/d/17PUAMn7zTDnfk0vSOyO5nP_Q4e5YAtc4huzmq06KfLg/edit?gid=0#gid=0>
+- [Grand Bazaar Recipe Spreadsheet (with images)](https://docs.google.com/spreadsheets/d/1Kk3nKjvrO3Z-YAIqexVx6E4ncyz2_55c0vezXGn5LqQ/edit?gid=0#gid=0)
+- [Grand Bazaar Recipe Spreadsheet (ingredient details)](https://docs.google.com/spreadsheets/d/17PUAMn7zTDnfk0vSOyO5nP_Q4e5YAtc4huzmq06KfLg/edit?gid=0#gid=0)
 
-Ingredient entries are intentionally stored as exact slot text (including comma-separated alternatives and labels like `(any)`) to match the spreadsheet format.
+Ingredient entries are stored as exact slot text (including comma-separated alternatives and labels like `(any)`) to match the spreadsheet format.
 
 ## Tech stack
 
