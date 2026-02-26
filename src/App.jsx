@@ -44,7 +44,7 @@ export default function App() {
   const [cat, setCat] = useState("All");
   const [effectFilter, setEffectFilter] = useState("All Effects");
   const [sortOrder, setSortOrder] = useState("none");
-  const [mode, setMode] = useState("kitchen"); // "kitchen" | "windmill"
+  const [mode, setMode] = useState("kitchen"); // "kitchen" | "windmill" | "all"
   const [windmillCat, setWindmillCat] = useState("All");
 
   const switchMode = (m) => {
@@ -111,8 +111,36 @@ export default function App() {
   }, [text, selected, windmillCat, sortOrder]);
 
   const isWindmill = mode === "windmill";
-  const filtered = isWindmill ? filteredWindmill : filteredKitchen;
-  const totalCount = isWindmill ? WINDMILL_GOODS.length : RECIPES.length;
+  const isAll = mode === "all";
+
+  const filteredAll = useMemo(() => {
+    if (!isAll) return [];
+    const kitchen = RECIPES.filter(r => {
+      for (const s of selected) {
+        if (!r.ingredients.some(i => ingMatch(i, s))) return false;
+      }
+      if (text && !r.ingredients.some(i => ingMatch(i, text)) && !norm(r.name).includes(norm(text))) return false;
+      return true;
+    }).map(r => ({ ...r, _type: "kitchen" }));
+    const wm = WINDMILL_GOODS.filter(r => {
+      for (const s of selected) {
+        if (!r.ingredients.some(i => ingMatch(i, s))) return false;
+      }
+      if (text && !r.ingredients.some(i => ingMatch(i, text)) && !norm(r.name).includes(norm(text))) return false;
+      return true;
+    }).map(r => ({ ...r, _type: "windmill" }));
+    let result = [...kitchen, ...wm];
+    if (sortOrder !== "none") {
+      result = result.sort((a, b) => {
+        const diff = parsePrice(a.price) - parsePrice(b.price);
+        return sortOrder === "asc" ? diff : -diff;
+      });
+    }
+    return result;
+  }, [text, selected, sortOrder, isAll]);
+
+  const filtered = isAll ? filteredAll : isWindmill ? filteredWindmill : filteredKitchen;
+  const totalCount = isAll ? RECIPES.length + WINDMILL_GOODS.length : isWindmill ? WINDMILL_GOODS.length : RECIPES.length;
   const hasActiveFilters = selected.length > 0 || effectFilter !== "All Effects";
 
   return (
@@ -133,6 +161,7 @@ export default function App() {
           {[
             { key: "kitchen",  label: "🍳 Kitchen Recipes", count: RECIPES.length },
             { key: "windmill", label: "⚙️ Windmill Goods",  count: WINDMILL_GOODS.length },
+            { key: "all",      label: "🔍 Search All",       count: RECIPES.length + WINDMILL_GOODS.length },
           ].map(m => (
             <button
               key={m.key}
@@ -141,7 +170,7 @@ export default function App() {
                 padding: "9px 22px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 800,
                 cursor: "pointer", fontFamily: "inherit",
                 border: mode === m.key ? "2.5px solid transparent" : "2.5px solid #ccc",
-                background: mode === m.key ? (m.key === "windmill" ? "linear-gradient(135deg,#b91c1c,#1d4ed8,#a16207)" : "linear-gradient(135deg,#4a9e4a,#3a7e3a)") : "#fff",
+                background: mode === m.key ? (m.key === "windmill" ? "linear-gradient(135deg,#b91c1c,#1d4ed8,#a16207)" : m.key === "all" ? "linear-gradient(135deg,#6b21a8,#1d4ed8)" : "linear-gradient(135deg,#4a9e4a,#3a7e3a)") : "#fff",
                 color: mode === m.key ? "#fff" : "#777",
                 boxShadow: mode === m.key ? "0 3px 10px rgba(0,0,0,0.15)" : "none",
               }}
@@ -158,7 +187,7 @@ export default function App() {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && text.trim()) addIngredient(text); }}
-            placeholder={isWindmill ? "Search windmill goods or inputs…" : "Type an ingredient or recipe name, press Enter to lock…"}
+            placeholder={isWindmill ? "Search windmill goods or inputs…" : isAll ? "Search recipes and windmill goods…" : "Type an ingredient or recipe name, press Enter to lock…"}
             style={{ border: "none", outline: "none", fontSize: "1rem", fontWeight: 600, color: "#3a2e1f", width: "100%", background: "transparent", fontFamily: "inherit" }}
           />
           {text && <button onClick={() => setText("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "#aaa" }}>×</button>}
@@ -182,8 +211,8 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Category filter ── */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12, alignItems: "center" }}>
+        {/* ── Category filter (hidden in all mode) ── */}
+        {!isAll && <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12, alignItems: "center" }}>
           <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
             {isWindmill ? "Windmill:" : "Category:"}
           </span>
@@ -206,7 +235,7 @@ export default function App() {
                 );
               })
           }
-        </div>
+        </div>}
 
         {/* ── Effect filter + Sort (kitchen only for effect) ── */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
@@ -244,8 +273,8 @@ export default function App() {
         {/* ── Result count ── */}
         <div style={{ fontSize: "0.83rem", fontWeight: 700, color: "#8B5E3C", marginBottom: 12 }}>
           {filtered.length === totalCount
-            ? `Showing all ${totalCount} ${isWindmill ? "windmill goods" : "recipes"}`
-            : `${filtered.length} ${isWindmill ? "item" : "recipe"}${filtered.length !== 1 ? "s" : ""} found`}
+            ? `Showing all ${totalCount} ${isAll ? "items" : isWindmill ? "windmill goods" : "recipes"}`
+            : `${filtered.length} ${isAll ? "item" : isWindmill ? "item" : "recipe"}${filtered.length !== 1 ? "s" : ""} found`}
         </div>
 
         {/* ── Cards ── */}
@@ -253,16 +282,21 @@ export default function App() {
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
             <div style={{ fontSize: "3.5rem" }}>{isWindmill ? "⚙️" : "🌾"}</div>
             <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10 }}>
-              {isWindmill ? "No windmill goods found — try a different input!" : "No recipes found — try a different ingredient!"}
+              No results found — try a different ingredient or name!
             </div>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
             {filtered.map(item => {
-              if (isWindmill) {
+              if (isWindmill || item._type === "windmill") {
                 const wc = WINDMILL_COLORS[item.windmill];
                 return (
-                  <div key={item.name} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
+                  <div key={item.name + item.windmill} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
+                    {item.img && (
+                      <div style={{ textAlign: "center" }}>
+                        <img src={`${import.meta.env.BASE_URL}${item.img}`} alt={item.name} style={{ height: 80, objectFit: "contain" }} />
+                      </div>
+                    )}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                       <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{item.name}</div>
                       <span style={{ background: wc.bg, color: wc.text, border: `1.5px solid ${wc.border}`, borderRadius: 50, padding: "3px 9px", fontSize: "0.7rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
