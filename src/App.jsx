@@ -1,19 +1,25 @@
 import { useState, useMemo } from "react";
 import { RECIPES, CAT_COLORS } from "./data/recipes.js";
+import { WINDMILL_GOODS, WINDMILL_COLORS } from "./data/windmill.js";
 
 const CATS = ["All", "Salad", "Soup", "Side", "Main Dish", "Dessert", "Other"];
+const WINDMILL_CATS = ["All", "Red", "Blue", "Yellow"];
 
 const CAT_EMOJI = {
   All: "🍽️", Salad: "🥗", Soup: "🍲", Side: "🍞",
   "Main Dish": "🍛", Dessert: "🍰", Other: "✨",
 };
 
+const WINDMILL_EMOJI = { All: "⚙️", Red: "🔴", Blue: "🔵", Yellow: "🟡" };
+
 const CAT_COLOR_MAP = {
   All: "#e07b39", Salad: "#1e5c2f", Soup: "#1a4a6b", Side: "#5c3d00",
   "Main Dish": "#6b1a1a", Dessert: "#5a1a6b", Other: "#2e1a6b",
 };
 
-// Extract unique effect categories (part before "Lv." or full text for specials)
+const WINDMILL_BTN_COLOR = { All: "#555", Red: "#991b1b", Blue: "#1e40af", Yellow: "#854d0e" };
+
+// Extract unique effect categories for kitchen mode
 const EFFECT_CATEGORIES = (() => {
   const cats = new Set();
   RECIPES.forEach(r => {
@@ -37,7 +43,19 @@ export default function App() {
   const [selected, setSelected] = useState([]);
   const [cat, setCat] = useState("All");
   const [effectFilter, setEffectFilter] = useState("All Effects");
-  const [sortOrder, setSortOrder] = useState("none"); // "none" | "asc" | "desc"
+  const [sortOrder, setSortOrder] = useState("none");
+  const [mode, setMode] = useState("kitchen"); // "kitchen" | "windmill"
+  const [windmillCat, setWindmillCat] = useState("All");
+
+  const switchMode = (m) => {
+    setMode(m);
+    setText("");
+    setSelected([]);
+    setCat("All");
+    setWindmillCat("All");
+    setEffectFilter("All Effects");
+    setSortOrder("none");
+  };
 
   const addIngredient = (ing) => {
     const trimmed = ing.trim();
@@ -52,7 +70,7 @@ export default function App() {
     setSelected(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const filtered = useMemo(() => {
+  const filteredKitchen = useMemo(() => {
     let result = RECIPES.filter(r => {
       if (cat !== "All" && r.cat !== cat) return false;
       for (const s of selected) {
@@ -65,17 +83,36 @@ export default function App() {
       }
       return true;
     });
-
     if (sortOrder !== "none") {
       result = [...result].sort((a, b) => {
         const diff = parsePrice(a.price) - parsePrice(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
     }
-
     return result;
   }, [text, selected, cat, effectFilter, sortOrder]);
 
+  const filteredWindmill = useMemo(() => {
+    let result = WINDMILL_GOODS.filter(r => {
+      if (windmillCat !== "All" && r.windmill !== windmillCat) return false;
+      for (const s of selected) {
+        if (!r.ingredients.some(i => ingMatch(i, s))) return false;
+      }
+      if (text && !r.ingredients.some(i => ingMatch(i, text)) && !norm(r.name).includes(norm(text))) return false;
+      return true;
+    });
+    if (sortOrder !== "none") {
+      result = [...result].sort((a, b) => {
+        const diff = parsePrice(a.price) - parsePrice(b.price);
+        return sortOrder === "asc" ? diff : -diff;
+      });
+    }
+    return result;
+  }, [text, selected, windmillCat, sortOrder]);
+
+  const isWindmill = mode === "windmill";
+  const filtered = isWindmill ? filteredWindmill : filteredKitchen;
+  const totalCount = isWindmill ? WINDMILL_GOODS.length : RECIPES.length;
   const hasActiveFilters = selected.length > 0 || effectFilter !== "All Effects";
 
   return (
@@ -91,6 +128,29 @@ export default function App() {
 
       <div style={{ maxWidth: 880, margin: "0 auto", padding: "20px 14px 48px" }}>
 
+        {/* ── Mode toggle ── */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center" }}>
+          {[
+            { key: "kitchen",  label: "🍳 Kitchen Recipes", count: RECIPES.length },
+            { key: "windmill", label: "⚙️ Windmill Goods",  count: WINDMILL_GOODS.length },
+          ].map(m => (
+            <button
+              key={m.key}
+              onClick={() => switchMode(m.key)}
+              style={{
+                padding: "9px 22px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 800,
+                cursor: "pointer", fontFamily: "inherit",
+                border: mode === m.key ? "2.5px solid transparent" : "2.5px solid #ccc",
+                background: mode === m.key ? (m.key === "windmill" ? "linear-gradient(135deg,#b91c1c,#1d4ed8,#a16207)" : "linear-gradient(135deg,#4a9e4a,#3a7e3a)") : "#fff",
+                color: mode === m.key ? "#fff" : "#777",
+                boxShadow: mode === m.key ? "0 3px 10px rgba(0,0,0,0.15)" : "none",
+              }}
+            >
+              {m.label} <span style={{ opacity: 0.75, fontWeight: 600, fontSize: "0.8rem" }}>({m.count})</span>
+            </button>
+          ))}
+        </div>
+
         {/* ── Ingredient / name search ── */}
         <div style={{ display: "flex", alignItems: "center", background: "#fff", border: "2.5px solid #c8e0b0", borderRadius: 50, padding: "10px 18px", boxShadow: "0 4px 14px rgba(58,46,31,0.1)", marginBottom: 12 }}>
           <span style={{ fontSize: "1.2rem", marginRight: 10 }}>🔍</span>
@@ -98,7 +158,7 @@ export default function App() {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && text.trim()) addIngredient(text); }}
-            placeholder="Type an ingredient or recipe name, press Enter to lock…"
+            placeholder={isWindmill ? "Search windmill goods or inputs…" : "Type an ingredient or recipe name, press Enter to lock…"}
             style={{ border: "none", outline: "none", fontSize: "1rem", fontWeight: 600, color: "#3a2e1f", width: "100%", background: "transparent", fontFamily: "inherit" }}
           />
           {text && <button onClick={() => setText("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "#aaa" }}>×</button>}
@@ -124,29 +184,44 @@ export default function App() {
 
         {/* ── Category filter ── */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12, alignItems: "center" }}>
-          <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>Category:</span>
-          {CATS.map(c2 => {
-            const active = cat === c2;
-            return (
-              <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
-                {CAT_EMOJI[c2]} {c2}
-              </button>
-            );
-          })}
+          <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
+            {isWindmill ? "Windmill:" : "Category:"}
+          </span>
+          {isWindmill
+            ? WINDMILL_CATS.map(w => {
+                const active = windmillCat === w;
+                const col = WINDMILL_BTN_COLOR[w];
+                return (
+                  <button key={w} onClick={() => setWindmillCat(w)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? col : "#fff", color: active ? "#fff" : "#777" }}>
+                    {WINDMILL_EMOJI[w]} {w === "All" ? "All" : `${w} Windmill`}
+                  </button>
+                );
+              })
+            : CATS.map(c2 => {
+                const active = cat === c2;
+                return (
+                  <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
+                    {CAT_EMOJI[c2]} {c2}
+                  </button>
+                );
+              })
+          }
         </div>
 
-        {/* ── Effect filter + Sort ── */}
+        {/* ── Effect filter + Sort (kitchen only for effect) ── */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Effect:</span>
-            <select
-              value={effectFilter}
-              onChange={e => setEffectFilter(e.target.value)}
-              style={{ padding: "6px 10px", borderRadius: 8, fontSize: "0.82rem", fontWeight: 700, border: effectFilter !== "All Effects" ? "2px solid #9b59b6" : "2px solid #ddd", background: effectFilter !== "All Effects" ? "#f3d9f8" : "#fff", color: effectFilter !== "All Effects" ? "#5a1a6b" : "#777", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              {EFFECT_CATEGORIES.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
-          </div>
+          {!isWindmill && (
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Effect:</span>
+              <select
+                value={effectFilter}
+                onChange={e => setEffectFilter(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 8, fontSize: "0.82rem", fontWeight: 700, border: effectFilter !== "All Effects" ? "2px solid #9b59b6" : "2px solid #ddd", background: effectFilter !== "All Effects" ? "#f3d9f8" : "#fff", color: effectFilter !== "All Effects" ? "#5a1a6b" : "#777", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                {EFFECT_CATEGORIES.map(e => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+          )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
@@ -168,20 +243,53 @@ export default function App() {
 
         {/* ── Result count ── */}
         <div style={{ fontSize: "0.83rem", fontWeight: 700, color: "#8B5E3C", marginBottom: 12 }}>
-          {filtered.length === RECIPES.length
-            ? `Showing all ${RECIPES.length} recipes`
-            : `${filtered.length} recipe${filtered.length !== 1 ? "s" : ""} found`}
+          {filtered.length === totalCount
+            ? `Showing all ${totalCount} ${isWindmill ? "windmill goods" : "recipes"}`
+            : `${filtered.length} ${isWindmill ? "item" : "recipe"}${filtered.length !== 1 ? "s" : ""} found`}
         </div>
 
-        {/* ── Recipe cards ── */}
+        {/* ── Cards ── */}
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-            <div style={{ fontSize: "3.5rem" }}>🌾</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10 }}>No recipes found — try a different ingredient!</div>
+            <div style={{ fontSize: "3.5rem" }}>{isWindmill ? "⚙️" : "🌾"}</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10 }}>
+              {isWindmill ? "No windmill goods found — try a different input!" : "No recipes found — try a different ingredient!"}
+            </div>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
-            {filtered.map(recipe => {
+            {filtered.map(item => {
+              if (isWindmill) {
+                const wc = WINDMILL_COLORS[item.windmill];
+                return (
+                  <div key={item.name} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{item.name}</div>
+                      <span style={{ background: wc.bg, color: wc.text, border: `1.5px solid ${wc.border}`, borderRadius: 50, padding: "3px 9px", fontSize: "0.7rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {WINDMILL_EMOJI[item.windmill]} {item.windmill}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {item.ingredients.map((ing, idx) => {
+                        const isSelected = selected.some(s => ingMatch(ing, s));
+                        const isTyped = text && ingMatch(ing, text);
+                        return (
+                          <span key={idx} onClick={() => addIngredient(ing)} title={ing} style={{ fontSize: "0.76rem", fontWeight: 700, padding: "3px 8px", borderRadius: 7, cursor: "pointer", background: isSelected ? "#c8f7c5" : isTyped ? "#ffe082" : "#f0ede4", border: isSelected ? "1.5px solid #5cb85c" : isTyped ? "1.5px solid #f5c842" : "1.5px solid transparent", color: "#3a2e1f" }}>
+                            {ing}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1.5px solid #f0ede4", paddingTop: 8, fontSize: "0.76rem" }}>
+                      <span style={{ fontWeight: 800, color: "#7a4e00" }}>💰 {item.price}</span>
+                      <span style={{ color: "#999", fontStyle: "italic", fontSize: "0.7rem" }}>⏱ {item.time}</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Kitchen recipe card
+              const recipe = item;
               const colors = CAT_COLORS[recipe.cat] || CAT_COLORS.Other;
               return (
                 <div key={recipe.name} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
