@@ -185,6 +185,11 @@ export default function App() {
               const colors = CAT_COLORS[recipe.cat] || CAT_COLORS.Other;
               return (
                 <div key={recipe.name} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
+                  {recipe.img && (
+                    <div style={{ textAlign: "center" }}>
+                      <img src={`${import.meta.env.BASE_URL}${recipe.img}`} alt={recipe.name} style={{ height: 80, objectFit: "contain" }} />
+                    </div>
+                  )}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                     <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{recipe.name}</div>
                     <span style={{ background: colors.bg, color: colors.text, border: `1.5px solid ${colors.border}`, borderRadius: 50, padding: "3px 9px", fontSize: "0.7rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
