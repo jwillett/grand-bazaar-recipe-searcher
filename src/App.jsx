@@ -166,8 +166,31 @@ export default function App() {
     || (!isWindmill && cat !== "All")
     || ((isWindmill || isAll) && windmillCat !== "All");
 
-  const WONDERSTONE_ITEM_PATTERN = /(Windmill Churn|Jewelry Stand|Sun Stone|Travel Stone)/i;
-  const requiresPurpleWonderstone = (item) => WONDERSTONE_ITEM_PATTERN.test(item.name);
+  const PURPLE_WONDERSTONE_ITEMS = new Set([
+    "Summer Sun Stone",
+    "Sprinkler",
+    "Pickled Veggie Mix",
+    "Blended Perfume",
+    "Autumn Sun Stone",
+    "Bronze Medal",
+    "Silver Medal",
+    "Gold Medal",
+    "Guardian Bait",
+    "Winter Sun Stone",
+    "Travel Stone",
+    "Ultimate Hoe",
+    "Ultimate Watering Can",
+    "Ultimate Sickle",
+    "Ultimate Fishing Rod",
+    "Ultimate Hatchet",
+    "Pink Brooch",
+    "Sparkly Bracelet",
+    "Spring Blend Tea Tin",
+    "Summer Blend Tea Tin",
+    "Autumn Blend Tea Tin",
+    "Golden Blend Tea Tin",
+  ]);
+  const requiresPurpleWonderstone = (item) => PURPLE_WONDERSTONE_ITEMS.has(item.name);
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", minHeight: "100vh", background: "linear-gradient(160deg,#c8e6f5 0%,#e8f5d0 50%,#fdf6e3 100%)", color: "#3a2e1f" }}>
