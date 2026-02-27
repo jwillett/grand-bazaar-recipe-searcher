@@ -166,7 +166,7 @@ export default function App() {
     || (!isWindmill && cat !== "All")
     || ((isWindmill || isAll) && windmillCat !== "All");
 
-  const WONDERSTONE_ITEM_PATTERN = /(Windmill Tent|Windmill Churn|Jewelry Stand|Sun Stone|Travel Stone)/i;
+  const WONDERSTONE_ITEM_PATTERN = /(Windmill Churn|Jewelry Stand|Sun Stone|Travel Stone)/i;
   const requiresPurpleWonderstone = (item) => WONDERSTONE_ITEM_PATTERN.test(item.name);
 
   return (
