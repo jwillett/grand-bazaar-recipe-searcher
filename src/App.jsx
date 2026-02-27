@@ -31,8 +31,22 @@ const EFFECT_CATEGORIES = (() => {
   return ["All Effects", ...Array.from(cats).sort()];
 })();
 
-function parsePrice(p) {
-  return parseInt(p.replace(/,/g, "").replace(" G", ""), 10);
+const NO_PRICE_KEY = "NO_PRICE";
+const NO_PRICE_LABEL = "No Price";
+
+function getPriceSortValue(price) {
+  if (!price || price === "N/A" || price === "Unique") return Number.NEGATIVE_INFINITY;
+  const parsed = parseInt(price.replace(/,/g, "").replace(" G", ""), 10);
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+}
+
+function getDisplayPrice(price) {
+  if (!price || price === "N/A" || price === "Unique") return NO_PRICE_LABEL;
+  return price;
+}
+
+function getPriceSortKey(price) {
+  return (!price || price === "N/A" || price === "Unique") ? NO_PRICE_KEY : price;
 }
 
 function norm(s) { return s.toLowerCase().trim(); }
@@ -44,7 +58,7 @@ export default function App() {
   const [cat, setCat] = useState("All");
   const [effectFilter, setEffectFilter] = useState("All Effects");
   const [sortOrder, setSortOrder] = useState("none");
-  const [mode, setMode] = useState("kitchen"); // "kitchen" | "windmill" | "all"
+  const [mode, setMode] = useState("all"); // "kitchen" | "windmill" | "all"
   const [windmillCat, setWindmillCat] = useState("All");
 
   const switchMode = (m) => {
@@ -85,7 +99,7 @@ export default function App() {
     });
     if (sortOrder !== "none") {
       result = [...result].sort((a, b) => {
-        const diff = parsePrice(a.price) - parsePrice(b.price);
+        const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
     }
@@ -103,7 +117,7 @@ export default function App() {
     });
     if (sortOrder !== "none") {
       result = [...result].sort((a, b) => {
-        const diff = parsePrice(a.price) - parsePrice(b.price);
+        const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
     }
@@ -116,6 +130,11 @@ export default function App() {
   const filteredAll = useMemo(() => {
     if (!isAll) return [];
     const kitchen = RECIPES.filter(r => {
+      if (cat !== "All" && r.cat !== cat) return false;
+      if (effectFilter !== "All Effects") {
+        const effectCat = r.effect.replace(/\s+Lv\.\s*\d+$/, "").trim();
+        if (effectCat !== effectFilter) return false;
+      }
       for (const s of selected) {
         if (!r.ingredients.some(i => ingMatch(i, s))) return false;
       }
@@ -123,6 +142,7 @@ export default function App() {
       return true;
     }).map(r => ({ ...r, _type: "kitchen" }));
     const wm = WINDMILL_GOODS.filter(r => {
+      if (windmillCat !== "All" && r.windmill !== windmillCat) return false;
       for (const s of selected) {
         if (!r.ingredients.some(i => ingMatch(i, s))) return false;
       }
@@ -132,16 +152,45 @@ export default function App() {
     let result = [...kitchen, ...wm];
     if (sortOrder !== "none") {
       result = result.sort((a, b) => {
-        const diff = parsePrice(a.price) - parsePrice(b.price);
+        const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
     }
     return result;
-  }, [text, selected, sortOrder, isAll]);
+  }, [text, selected, sortOrder, isAll, cat, windmillCat, effectFilter]);
 
   const filtered = isAll ? filteredAll : isWindmill ? filteredWindmill : filteredKitchen;
   const totalCount = isAll ? RECIPES.length + WINDMILL_GOODS.length : isWindmill ? WINDMILL_GOODS.length : RECIPES.length;
-  const hasActiveFilters = selected.length > 0 || effectFilter !== "All Effects";
+  const hasActiveFilters = selected.length > 0
+    || (!isWindmill && effectFilter !== "All Effects")
+    || (!isWindmill && cat !== "All")
+    || ((isWindmill || isAll) && windmillCat !== "All");
+
+  const PURPLE_WONDERSTONE_ITEMS = new Set([
+    "Summer Sun Stone",
+    "Sprinkler",
+    "Pickled Veggie Mix",
+    "Blended Perfume",
+    "Autumn Sun Stone",
+    "Bronze Medal",
+    "Silver Medal",
+    "Gold Medal",
+    "Guardian Bait",
+    "Winter Sun Stone",
+    "Travel Stone",
+    "Ultimate Hoe",
+    "Ultimate Watering Can",
+    "Ultimate Sickle",
+    "Ultimate Fishing Rod",
+    "Ultimate Hatchet",
+    "Pink Brooch",
+    "Sparkly Bracelet",
+    "Spring Blend Tea Tin",
+    "Summer Blend Tea Tin",
+    "Autumn Blend Tea Tin",
+    "Golden Blend Tea Tin",
+  ]);
+  const requiresPurpleWonderstone = (item) => PURPLE_WONDERSTONE_ITEMS.has(item.name);
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", minHeight: "100vh", background: "linear-gradient(160deg,#c8e6f5 0%,#e8f5d0 50%,#fdf6e3 100%)", color: "#3a2e1f" }}>
@@ -211,13 +260,30 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Category filter (hidden in all mode) ── */}
-        {!isAll && <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12, alignItems: "center" }}>
-          <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
-            {isWindmill ? "Windmill:" : "Category:"}
-          </span>
-          {isWindmill
-            ? WINDMILL_CATS.map(w => {
+        {/* ── Category filters ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          {!isWindmill && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
+                Category:
+              </span>
+              {CATS.map(c2 => {
+                const active = cat === c2;
+                return (
+                  <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
+                    {CAT_EMOJI[c2]} {c2}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {(isWindmill || isAll) && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
+                Windmill:
+              </span>
+              {WINDMILL_CATS.map(w => {
                 const active = windmillCat === w;
                 const col = WINDMILL_BTN_COLOR[w];
                 return (
@@ -225,17 +291,10 @@ export default function App() {
                     {WINDMILL_EMOJI[w]} {w === "All" ? "All" : `${w} Windmill`}
                   </button>
                 );
-              })
-            : CATS.map(c2 => {
-                const active = cat === c2;
-                return (
-                  <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
-                    {CAT_EMOJI[c2]} {c2}
-                  </button>
-                );
-              })
-          }
-        </div>}
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ── Effect filter + Sort (kitchen only for effect) ── */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
@@ -303,6 +362,11 @@ export default function App() {
                         {WINDMILL_EMOJI[item.windmill]} {item.windmill}
                       </span>
                     </div>
+                    {requiresPurpleWonderstone(item) && (
+                      <div style={{ marginTop: -2, fontSize: "0.73rem", fontWeight: 800, color: "#6b21a8", display: "flex", alignItems: "center", gap: 5 }}>
+                        🟣 Purple Wonderstone Required
+                      </div>
+                    )}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                       {item.ingredients.map((ing, idx) => {
                         const isSelected = selected.some(s => ingMatch(ing, s));
@@ -315,7 +379,7 @@ export default function App() {
                       })}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1.5px solid #f0ede4", paddingTop: 8, fontSize: "0.76rem" }}>
-                      <span style={{ fontWeight: 800, color: "#7a4e00" }}>💰 {item.price}</span>
+                      <span style={{ fontWeight: 800, color: "#7a4e00" }} title={getPriceSortKey(item.price)}>💰 {getDisplayPrice(item.price)}</span>
                       <span style={{ color: "#999", fontStyle: "italic", fontSize: "0.7rem" }}>⏱ {item.time}</span>
                     </div>
                   </div>
@@ -350,7 +414,7 @@ export default function App() {
                     })}
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1.5px solid #f0ede4", paddingTop: 8, fontSize: "0.76rem" }}>
-                    <span style={{ fontWeight: 800, color: "#7a4e00" }}>💰 {recipe.price}</span>
+                    <span style={{ fontWeight: 800, color: "#7a4e00" }} title={getPriceSortKey(recipe.price)}>💰 {getDisplayPrice(recipe.price)}</span>
                     {recipe.effect && <span style={{ color: "#999", fontStyle: "italic", fontSize: "0.7rem" }}>✨ {recipe.effect}</span>}
                   </div>
                 </div>
