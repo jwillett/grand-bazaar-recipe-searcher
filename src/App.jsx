@@ -190,8 +190,15 @@ export default function App() {
     const windmill = WINDMILL_GOODS
       .filter(r => shortlist.has(`w:${r.name}`))
       .map(r => ({ ...r, _type: "windmill" }));
-    return [...kitchen, ...windmill];
-  }, [shortlist]);
+    let result = [...kitchen, ...windmill];
+    if (sortOrder !== "none") {
+      result = result.sort((a, b) => {
+        const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
+        return sortOrder === "asc" ? diff : -diff;
+      });
+    }
+    return result;
+  }, [shortlist, sortOrder]);
 
   const displayItems = showShortlist ? shortlistItems : filtered;
 
@@ -345,9 +352,9 @@ export default function App() {
               )}
             </div>
 
-            {/* ── Effect filter + Sort (kitchen only for effect) ── */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
-              {!isWindmill && (
+            {/* ── Effect filter (kitchen only) ── */}
+            {!isWindmill && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Effect:</span>
                   <select
@@ -358,27 +365,28 @@ export default function App() {
                     {EFFECT_CATEGORIES.map(e => <option key={e} value={e}>{e}</option>)}
                   </select>
                 </div>
-              )}
-
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
-                {[
-                  { value: "none", label: "Default" },
-                  { value: "asc",  label: "↑ Cheapest" },
-                  { value: "desc", label: "↓ Priciest" },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setSortOrder(opt.value)}
-                    style={{ padding: "6px 12px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: sortOrder === opt.value ? "2px solid transparent" : "2px solid #ddd", background: sortOrder === opt.value ? "#7a4e00" : "#fff", color: sortOrder === opt.value ? "#fff" : "#777", fontFamily: "inherit" }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
               </div>
-            </div>
+            )}
           </>
         )}
+
+        {/* ── Sort price (always visible) ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 18 }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
+          {[
+            { value: "none", label: "Default" },
+            { value: "asc",  label: "↑ Cheapest" },
+            { value: "desc", label: "↓ Priciest" },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setSortOrder(opt.value)}
+              style={{ padding: "6px 12px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: sortOrder === opt.value ? "2px solid transparent" : "2px solid #ddd", background: sortOrder === opt.value ? "#7a4e00" : "#fff", color: sortOrder === opt.value ? "#fff" : "#777", fontFamily: "inherit" }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
 
         {/* ── Result count ── */}
         <div style={{ fontSize: "0.83rem", fontWeight: 700, color: "#8B5E3C", marginBottom: 12 }}>
