@@ -60,6 +60,8 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState("none");
   const [mode, setMode] = useState("all"); // "kitchen" | "windmill" | "all"
   const [windmillCat, setWindmillCat] = useState("All");
+  const [shortlist, setShortlist] = useState(new Set());
+  const [showShortlist, setShowShortlist] = useState(false);
 
   const switchMode = (m) => {
     setMode(m);
@@ -82,6 +84,20 @@ export default function App() {
 
   const removeIngredient = (i) => {
     setSelected(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  // Shortlist helpers — windmill items have a `windmill` property, kitchen items have `cat`
+  const itemKey = (item) => item.windmill ? `w:${item.name}` : `k:${item.name}`;
+  const isShortlisted = (item) => shortlist.has(itemKey(item));
+  const toggleShortlistItem = (item, e) => {
+    e.stopPropagation();
+    const key = itemKey(item);
+    setShortlist(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   const filteredKitchen = useMemo(() => {
@@ -166,6 +182,19 @@ export default function App() {
     || (!isWindmill && cat !== "All")
     || ((isWindmill || isAll) && windmillCat !== "All");
 
+  // Shortlist view: show all saved items from both data sets, ignoring current filters
+  const shortlistItems = useMemo(() => {
+    const kitchen = RECIPES
+      .filter(r => shortlist.has(`k:${r.name}`))
+      .map(r => ({ ...r, _type: "kitchen" }));
+    const windmill = WINDMILL_GOODS
+      .filter(r => shortlist.has(`w:${r.name}`))
+      .map(r => ({ ...r, _type: "windmill" }));
+    return [...kitchen, ...windmill];
+  }, [shortlist]);
+
+  const displayItems = showShortlist ? shortlistItems : filtered;
+
   const PURPLE_WONDERSTONE_ITEMS = new Set([
     "Summer Sun Stone",
     "Sprinkler",
@@ -206,7 +235,7 @@ export default function App() {
       <div style={{ maxWidth: 880, margin: "0 auto", padding: "20px 14px 48px" }}>
 
         {/* ── Mode toggle ── */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, justifyContent: "center", flexWrap: "wrap" }}>
           {[
             { key: "kitchen",  label: "🍳 Kitchen Recipes", count: RECIPES.length },
             { key: "windmill", label: "⚙️ Windmill Goods",  count: WINDMILL_GOODS.length },
@@ -229,124 +258,160 @@ export default function App() {
           ))}
         </div>
 
-        {/* ── Ingredient / name search ── */}
-        <div style={{ display: "flex", alignItems: "center", background: "#fff", border: "2.5px solid #c8e0b0", borderRadius: 50, padding: "10px 18px", boxShadow: "0 4px 14px rgba(58,46,31,0.1)", marginBottom: 12 }}>
-          <span style={{ fontSize: "1.2rem", marginRight: 10 }}>🔍</span>
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && text.trim()) addIngredient(text); }}
-            placeholder={isWindmill ? "Search windmill goods or inputs…" : isAll ? "Search recipes and windmill goods…" : "Type an ingredient or recipe name, press Enter to lock…"}
-            style={{ border: "none", outline: "none", fontSize: "1rem", fontWeight: 600, color: "#3a2e1f", width: "100%", background: "transparent", fontFamily: "inherit" }}
-          />
-          {text && <button onClick={() => setText("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "#aaa" }}>×</button>}
+        {/* ── Shortlist toggle ── */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <button
+            onClick={() => setShowShortlist(p => !p)}
+            style={{
+              padding: "7px 20px", borderRadius: 50, fontSize: "0.85rem", fontWeight: 800,
+              cursor: "pointer", fontFamily: "inherit",
+              border: showShortlist ? "2.5px solid transparent" : "2.5px solid #e8b84b",
+              background: showShortlist ? "linear-gradient(135deg,#f59e0b,#d97706)" : "#fff8e7",
+              color: showShortlist ? "#fff" : "#b45309",
+              boxShadow: showShortlist ? "0 3px 10px rgba(0,0,0,0.15)" : "none",
+            }}
+          >
+            ⭐ Shortlist{shortlist.size > 0 ? ` (${shortlist.size})` : ""}
+          </button>
         </div>
 
-        {/* ── Locked ingredient badges ── */}
-        {selected.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
-            {selected.map((s, i) => (
-              <span key={i} onClick={() => removeIngredient(i)} style={{ background: "#fff3d0", border: "1.5px solid #f0c060", color: "#7a4e00", borderRadius: 50, padding: "4px 12px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                🌿 {s} <span style={{ fontSize: "1rem" }}>×</span>
-              </span>
-            ))}
-            <span onClick={() => setSelected([])} style={{ background: "#fee", border: "1.5px solid #faa", color: "#a00", borderRadius: 50, padding: "4px 12px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>Clear all</span>
-          </div>
-        )}
+        {/* ── Search & filters (hidden in shortlist view) ── */}
+        {!showShortlist && (
+          <>
+            {/* ── Ingredient / name search ── */}
+            <div style={{ display: "flex", alignItems: "center", background: "#fff", border: "2.5px solid #c8e0b0", borderRadius: 50, padding: "10px 18px", boxShadow: "0 4px 14px rgba(58,46,31,0.1)", marginBottom: 12 }}>
+              <span style={{ fontSize: "1.2rem", marginRight: 10 }}>🔍</span>
+              <input
+                value={text}
+                onChange={e => setText(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && text.trim()) addIngredient(text); }}
+                placeholder={isWindmill ? "Search windmill goods or inputs…" : isAll ? "Search recipes and windmill goods…" : "Type an ingredient or recipe name, press Enter to lock…"}
+                style={{ border: "none", outline: "none", fontSize: "1rem", fontWeight: 600, color: "#3a2e1f", width: "100%", background: "transparent", fontFamily: "inherit" }}
+              />
+              {text && <button onClick={() => setText("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "#aaa" }}>×</button>}
+            </div>
 
-        {!hasActiveFilters && !text && (
-          <div style={{ background: "#fffbe8", border: "1.5px solid #f5c842", borderRadius: 10, padding: "7px 14px", fontSize: "0.82rem", color: "#7a5c00", fontWeight: 600, marginBottom: 12 }}>
-            💡 Press <strong>Enter</strong> to lock in an ingredient and filter by multiple at once. Click any ingredient badge on a card to add it!
-          </div>
-        )}
+            {/* ── Locked ingredient badges ── */}
+            {selected.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
+                {selected.map((s, i) => (
+                  <span key={i} onClick={() => removeIngredient(i)} style={{ background: "#fff3d0", border: "1.5px solid #f0c060", color: "#7a4e00", borderRadius: 50, padding: "4px 12px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                    🌿 {s} <span style={{ fontSize: "1rem" }}>×</span>
+                  </span>
+                ))}
+                <span onClick={() => setSelected([])} style={{ background: "#fee", border: "1.5px solid #faa", color: "#a00", borderRadius: 50, padding: "4px 12px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>Clear all</span>
+              </div>
+            )}
 
-        {/* ── Category filters ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-          {!isWindmill && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
-                Category:
-              </span>
-              {CATS.map(c2 => {
-                const active = cat === c2;
-                return (
-                  <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
-                    {CAT_EMOJI[c2]} {c2}
+            {!hasActiveFilters && !text && (
+              <div style={{ background: "#fffbe8", border: "1.5px solid #f5c842", borderRadius: 10, padding: "7px 14px", fontSize: "0.82rem", color: "#7a5c00", fontWeight: 600, marginBottom: 12 }}>
+                💡 Press <strong>Enter</strong> to lock in an ingredient and filter by multiple at once. Click any ingredient badge on a card to add it!
+              </div>
+            )}
+
+            {/* ── Category filters ── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              {!isWindmill && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
+                    Category:
+                  </span>
+                  {CATS.map(c2 => {
+                    const active = cat === c2;
+                    return (
+                      <button key={c2} onClick={() => setCat(c2)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? CAT_COLOR_MAP[c2] : "#fff", color: active ? "#fff" : "#777", fontFamily: "inherit" }}>
+                        {CAT_EMOJI[c2]} {c2}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {(isWindmill || isAll) && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
+                    Windmill:
+                  </span>
+                  {WINDMILL_CATS.map(w => {
+                    const active = windmillCat === w;
+                    const col = WINDMILL_BTN_COLOR[w];
+                    return (
+                      <button key={w} onClick={() => setWindmillCat(w)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? col : "#fff", color: active ? "#fff" : "#777" }}>
+                        {WINDMILL_EMOJI[w]} {w === "All" ? "All" : `${w} Windmill`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── Effect filter + Sort (kitchen only for effect) ── */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
+              {!isWindmill && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Effect:</span>
+                  <select
+                    value={effectFilter}
+                    onChange={e => setEffectFilter(e.target.value)}
+                    style={{ padding: "6px 10px", borderRadius: 8, fontSize: "0.82rem", fontWeight: 700, border: effectFilter !== "All Effects" ? "2px solid #9b59b6" : "2px solid #ddd", background: effectFilter !== "All Effects" ? "#f3d9f8" : "#fff", color: effectFilter !== "All Effects" ? "#5a1a6b" : "#777", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    {EFFECT_CATEGORIES.map(e => <option key={e} value={e}>{e}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
+                {[
+                  { value: "none", label: "Default" },
+                  { value: "asc",  label: "↑ Cheapest" },
+                  { value: "desc", label: "↓ Priciest" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSortOrder(opt.value)}
+                    style={{ padding: "6px 12px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: sortOrder === opt.value ? "2px solid transparent" : "2px solid #ddd", background: sortOrder === opt.value ? "#7a4e00" : "#fff", color: sortOrder === opt.value ? "#fff" : "#777", fontFamily: "inherit" }}
+                  >
+                    {opt.label}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          )}
-
-          {(isWindmill || isAll) && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 }}>
-                Windmill:
-              </span>
-              {WINDMILL_CATS.map(w => {
-                const active = windmillCat === w;
-                const col = WINDMILL_BTN_COLOR[w];
-                return (
-                  <button key={w} onClick={() => setWindmillCat(w)} style={{ padding: "6px 14px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: active ? "2px solid transparent" : "2px solid #ddd", background: active ? col : "#fff", color: active ? "#fff" : "#777" }}>
-                    {WINDMILL_EMOJI[w]} {w === "All" ? "All" : `${w} Windmill`}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ── Effect filter + Sort (kitchen only for effect) ── */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18, alignItems: "center" }}>
-          {!isWindmill && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Effect:</span>
-              <select
-                value={effectFilter}
-                onChange={e => setEffectFilter(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 8, fontSize: "0.82rem", fontWeight: 700, border: effectFilter !== "All Effects" ? "2px solid #9b59b6" : "2px solid #ddd", background: effectFilter !== "All Effects" ? "#f3d9f8" : "#fff", color: effectFilter !== "All Effects" ? "#5a1a6b" : "#777", cursor: "pointer", fontFamily: "inherit" }}
-              >
-                {EFFECT_CATEGORIES.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
-            {[
-              { value: "none", label: "Default" },
-              { value: "asc",  label: "↑ Cheapest" },
-              { value: "desc", label: "↓ Priciest" },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setSortOrder(opt.value)}
-                style={{ padding: "6px 12px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", border: sortOrder === opt.value ? "2px solid transparent" : "2px solid #ddd", background: sortOrder === opt.value ? "#7a4e00" : "#fff", color: sortOrder === opt.value ? "#fff" : "#777", fontFamily: "inherit" }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+          </>
+        )}
 
         {/* ── Result count ── */}
         <div style={{ fontSize: "0.83rem", fontWeight: 700, color: "#8B5E3C", marginBottom: 12 }}>
-          {filtered.length === totalCount
-            ? `Showing all ${totalCount} ${isAll ? "items" : isWindmill ? "windmill goods" : "recipes"}`
-            : `${filtered.length} ${isAll ? "item" : isWindmill ? "item" : "recipe"}${filtered.length !== 1 ? "s" : ""} found`}
+          {showShortlist
+            ? `${displayItems.length} shortlisted item${displayItems.length !== 1 ? "s" : ""}`
+            : filtered.length === totalCount
+              ? `Showing all ${totalCount} ${isAll ? "items" : isWindmill ? "windmill goods" : "recipes"}`
+              : `${filtered.length} ${isAll ? "item" : isWindmill ? "item" : "recipe"}${filtered.length !== 1 ? "s" : ""} found`}
         </div>
 
         {/* ── Cards ── */}
-        {filtered.length === 0 ? (
+        {displayItems.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-            <div style={{ fontSize: "3.5rem" }}>{isWindmill ? "⚙️" : "🌾"}</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10 }}>
-              No results found — try a different ingredient or name!
-            </div>
+            {showShortlist ? (
+              <>
+                <div style={{ fontSize: "3.5rem" }}>⭐</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10, color: "#b45309" }}>
+                  Your shortlist is empty — click ☆ on any card to save it here!
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: "3.5rem" }}>{isWindmill ? "⚙️" : "🌾"}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, marginTop: 10 }}>
+                  No results found — try a different ingredient or name!
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
-            {filtered.map(item => {
+            {displayItems.map(item => {
+              const shortlisted = isShortlisted(item);
               if (isWindmill || item._type === "windmill") {
                 const wc = WINDMILL_COLORS[item.windmill];
                 return (
@@ -357,7 +422,16 @@ export default function App() {
                       </div>
                     )}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                      <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{item.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                        <button
+                          onClick={(e) => toggleShortlistItem(item, e)}
+                          title={shortlisted ? "Remove from shortlist" : "Add to shortlist"}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", padding: 0, lineHeight: 1, flexShrink: 0, color: shortlisted ? "#f59e0b" : "#ccc" }}
+                        >
+                          {shortlisted ? "★" : "☆"}
+                        </button>
+                        <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{item.name}</div>
+                      </div>
                       <span style={{ background: wc.bg, color: wc.text, border: `1.5px solid ${wc.border}`, borderRadius: 50, padding: "3px 9px", fontSize: "0.7rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
                         {WINDMILL_EMOJI[item.windmill]} {item.windmill}
                       </span>
@@ -397,7 +471,16 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                    <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{recipe.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                      <button
+                        onClick={(e) => toggleShortlistItem(recipe, e)}
+                        title={shortlisted ? "Remove from shortlist" : "Add to shortlist"}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", padding: 0, lineHeight: 1, flexShrink: 0, color: shortlisted ? "#f59e0b" : "#ccc" }}
+                      >
+                        {shortlisted ? "★" : "☆"}
+                      </button>
+                      <div style={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.25 }}>{recipe.name}</div>
+                    </div>
                     <span style={{ background: colors.bg, color: colors.text, border: `1.5px solid ${colors.border}`, borderRadius: 50, padding: "3px 9px", fontSize: "0.7rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
                       {recipe.cat}
                     </span>
