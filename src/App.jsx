@@ -412,7 +412,7 @@ export default function App() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
             {displayItems.map(item => {
               const shortlisted = isShortlisted(item);
-              if (isWindmill || item._type === "windmill") {
+              if (item._type ? item._type === "windmill" : isWindmill) {
                 const wc = WINDMILL_COLORS[item.windmill];
                 return (
                   <div key={item.name + item.windmill} style={{ background: "#fffdf6", border: "2px solid #e0d4b8", borderRadius: 14, padding: 14, boxShadow: "0 3px 10px rgba(58,46,31,0.1)", display: "flex", flexDirection: "column", gap: 9 }}>
