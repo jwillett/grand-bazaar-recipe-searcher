@@ -34,19 +34,22 @@ const EFFECT_CATEGORIES = (() => {
 const NO_PRICE_KEY = "NO_PRICE";
 const NO_PRICE_LABEL = "No Price";
 
+function hasNoPrice(price) {
+  return !price || price === "N/A" || price === "Unique";
+}
+
 function getPriceSortValue(price) {
-  if (!price || price === "N/A" || price === "Unique") return Number.NEGATIVE_INFINITY;
+  if (hasNoPrice(price)) return Number.NEGATIVE_INFINITY;
   const parsed = parseInt(price.replace(/,/g, "").replace(" G", ""), 10);
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
 function getDisplayPrice(price) {
-  if (!price || price === "N/A" || price === "Unique") return NO_PRICE_LABEL;
-  return price;
+  return hasNoPrice(price) ? NO_PRICE_LABEL : price;
 }
 
 function getPriceSortKey(price) {
-  return (!price || price === "N/A" || price === "Unique") ? NO_PRICE_KEY : price;
+  return hasNoPrice(price) ? NO_PRICE_KEY : price;
 }
 
 function norm(s) { return s.toLowerCase().trim(); }
@@ -66,12 +69,9 @@ export default function App() {
 
   const switchMode = (m) => {
     setMode(m);
-    setText("");
-    setSelected([]);
     setCat("All");
     setWindmillCat("All");
     setEffectFilter("All Effects");
-    setSortOrder("none");
   };
 
   const addIngredient = (ing) => {
@@ -148,8 +148,10 @@ export default function App() {
       }
       return true;
     });
-    if (sortOrder !== "none") {
-      result = [...result].sort((a, b) => {
+    if (sortOrder === "no_price") {
+      result = result.filter(r => hasNoPrice(r.price));
+    } else if (sortOrder !== "none") {
+      result = [...result].filter(r => !hasNoPrice(r.price)).sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -166,8 +168,10 @@ export default function App() {
       if (text && !r.ingredients.some(i => ingMatch(i, text)) && !norm(r.name).includes(norm(text))) return false;
       return true;
     });
-    if (sortOrder !== "none") {
-      result = [...result].sort((a, b) => {
+    if (sortOrder === "no_price") {
+      result = result.filter(r => hasNoPrice(r.price));
+    } else if (sortOrder !== "none") {
+      result = [...result].filter(r => !hasNoPrice(r.price)).sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -201,8 +205,10 @@ export default function App() {
       return true;
     }).map(r => ({ ...r, _type: "windmill" }));
     let result = [...kitchen, ...wm];
-    if (sortOrder !== "none") {
-      result = result.sort((a, b) => {
+    if (sortOrder === "no_price") {
+      result = result.filter(r => hasNoPrice(r.price));
+    } else if (sortOrder !== "none") {
+      result = result.filter(r => !hasNoPrice(r.price)).sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -226,8 +232,10 @@ export default function App() {
       .filter(r => shortlist.has(`w:${r.name}`))
       .map(r => ({ ...r, _type: "windmill" }));
     let result = [...kitchen, ...windmill];
-    if (sortOrder !== "none") {
-      result = result.sort((a, b) => {
+    if (sortOrder === "no_price") {
+      result = result.filter(r => hasNoPrice(r.price));
+    } else if (sortOrder !== "none") {
+      result = result.filter(r => !hasNoPrice(r.price)).sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -439,9 +447,10 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 18 }}>
           <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8B5E3C", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sort price:</span>
           {[
-            { value: "none", label: "Default" },
-            { value: "asc",  label: "↑ Cheapest" },
-            { value: "desc", label: "↓ Priciest" },
+            { value: "none",     label: "Default" },
+            { value: "asc",      label: "↑ Cheapest" },
+            { value: "desc",     label: "↓ Priciest" },
+            { value: "no_price", label: "No Price" },
           ].map(opt => (
             <button
               key={opt.value}
