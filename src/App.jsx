@@ -39,9 +39,9 @@ function hasNoPrice(price) {
 }
 
 function getPriceSortValue(price) {
-  if (hasNoPrice(price)) return Number.NEGATIVE_INFINITY;
+  if (hasNoPrice(price)) return 0;
   const parsed = parseInt(price.replace(/,/g, "").replace(" G", ""), 10);
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function getDisplayPrice(price) {
@@ -151,7 +151,7 @@ export default function App() {
     if (sortOrder === "no_price") {
       result = result.filter(r => hasNoPrice(r.price));
     } else if (sortOrder !== "none") {
-      result = [...result].filter(r => !hasNoPrice(r.price)).sort((a, b) => {
+      result = [...result].sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -171,7 +171,7 @@ export default function App() {
     if (sortOrder === "no_price") {
       result = result.filter(r => hasNoPrice(r.price));
     } else if (sortOrder !== "none") {
-      result = [...result].filter(r => !hasNoPrice(r.price)).sort((a, b) => {
+      result = [...result].sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -208,7 +208,7 @@ export default function App() {
     if (sortOrder === "no_price") {
       result = result.filter(r => hasNoPrice(r.price));
     } else if (sortOrder !== "none") {
-      result = result.filter(r => !hasNoPrice(r.price)).sort((a, b) => {
+      result = result.sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
@@ -235,7 +235,7 @@ export default function App() {
     if (sortOrder === "no_price") {
       result = result.filter(r => hasNoPrice(r.price));
     } else if (sortOrder !== "none") {
-      result = result.filter(r => !hasNoPrice(r.price)).sort((a, b) => {
+      result = result.sort((a, b) => {
         const diff = getPriceSortValue(a.price) - getPriceSortValue(b.price);
         return sortOrder === "asc" ? diff : -diff;
       });
