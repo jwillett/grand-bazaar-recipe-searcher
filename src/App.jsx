@@ -62,6 +62,7 @@ export default function App() {
   const [windmillCat, setWindmillCat] = useState("All");
   const [shortlist, setShortlist] = useState(new Set());
   const [showShortlist, setShowShortlist] = useState(false);
+  const [importError, setImportError] = useState("");
 
   const switchMode = (m) => {
     setMode(m);
@@ -84,6 +85,40 @@ export default function App() {
 
   const removeIngredient = (i) => {
     setSelected(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const exportShortlist = () => {
+    const data = JSON.stringify({ version: 1, items: [...shortlist] }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "shortlist.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importShortlist = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.items || !Array.isArray(parsed.items)) throw new Error("Invalid format");
+        const validKeys = new Set(
+          [...RECIPES.map(r => `k:${r.name}`), ...WINDMILL_GOODS.map(r => `w:${r.name}`)]
+        );
+        const restored = new Set(parsed.items.filter(k => typeof k === "string" && validKeys.has(k)));
+        setShortlist(restored);
+        setImportError("");
+        setShowShortlist(true);
+      } catch {
+        setImportError("Could not read file — make sure it's a valid shortlist export.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   // Shortlist helpers — windmill items have a `windmill` property, kitchen items have `cat`
@@ -265,8 +300,8 @@ export default function App() {
           ))}
         </div>
 
-        {/* ── Shortlist toggle ── */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+        {/* ── Shortlist toggle + export/import ── */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: importError ? 4 : 16, flexWrap: "wrap" }}>
           <button
             onClick={() => setShowShortlist(p => !p)}
             style={{
@@ -280,7 +315,37 @@ export default function App() {
           >
             ⭐ Shortlist{shortlist.size > 0 ? ` (${shortlist.size})` : ""}
           </button>
+          <button
+            onClick={exportShortlist}
+            disabled={shortlist.size === 0}
+            title="Download your shortlist as a JSON file"
+            style={{
+              padding: "7px 16px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 800,
+              cursor: shortlist.size === 0 ? "default" : "pointer", fontFamily: "inherit",
+              border: "2px solid #a3c4a3", background: "#f0faf0", color: shortlist.size === 0 ? "#bbb" : "#2d6a2d",
+              opacity: shortlist.size === 0 ? 0.5 : 1,
+            }}
+          >
+            ↓ Export
+          </button>
+          <label
+            title="Import a previously exported shortlist file"
+            style={{
+              padding: "7px 16px", borderRadius: 50, fontSize: "0.82rem", fontWeight: 800,
+              cursor: "pointer", fontFamily: "inherit",
+              border: "2px solid #a3b4d4", background: "#f0f4fa", color: "#2d3f6a",
+              display: "inline-block",
+            }}
+          >
+            ↑ Import
+            <input type="file" accept=".json,application/json" onChange={importShortlist} style={{ display: "none" }} />
+          </label>
         </div>
+        {importError && (
+          <div style={{ textAlign: "center", marginBottom: 16, fontSize: "0.82rem", color: "#b91c1c", fontWeight: 700 }}>
+            ⚠ {importError}
+          </div>
+        )}
 
         {/* ── Search & filters (hidden in shortlist view) ── */}
         {!showShortlist && (
